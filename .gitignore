@@ -1,0 +1,13 @@
+/target
+AGENTS.md
+CLAUDE.md
+/docs/SANDBOX.md
+.opencode
+.DS_Store
+ocx.*
+opencode.*
+demo-app/dist
+demo-app/target
+.claude/skills/
+
+/docs/reviews
