@@ -727,6 +727,108 @@ impl CodeEditor {
         editor
     }
 
+    /// Clones the editor for hosts that rebuild their widget state (for
+    /// example when moving a UI between contexts).
+    ///
+    /// The document, cursors, history and settings are carried over; render
+    /// caches, the Vim parser, IME and LSP session state are reset, since a
+    /// clone starts as a fresh widget over the same document.
+    fn clone_state(&self) -> Self {
+        let mut editor = Self {
+            editor_id: EDITOR_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            buffer: self.buffer.clone(),
+            cursors: self.cursors.clone(),
+            horizontal_scroll_offset: self.horizontal_scroll_offset,
+            style: self.style,
+            syntax: self.syntax.clone(),
+            last_blink: Instant::now(),
+            cursor_visible: self.cursor_visible,
+            is_dragging: false,
+            content_cache: canvas::Cache::default(),
+            overlay_cache: canvas::Cache::default(),
+            scrollable_id: Id::unique(),
+            horizontal_scrollable_id: Id::unique(),
+            max_content_width_cache: RefCell::new(None),
+            viewport_scroll: self.viewport_scroll,
+            viewport_height: self.viewport_height,
+            viewport_width: self.viewport_width,
+            last_canvas_width: Cell::new(self.last_canvas_width.get()),
+            history: self.history.clone(),
+            is_grouping: false,
+            wrap_enabled: self.wrap_enabled,
+            auto_indent_enabled: self.auto_indent_enabled,
+            auto_close_brackets: self.auto_close_brackets,
+            indent_style: self.indent_style,
+            wrap_column: self.wrap_column,
+            folding_enabled: self.folding_enabled,
+            collapsed_folds: self.collapsed_folds.clone(),
+            fold_revision: self.fold_revision,
+            foldable_regions_cache: RefCell::new(None),
+            search_state: self.search_state.clone(),
+            custom_context_menu_entries: self.custom_context_menu_entries.clone(),
+            default_context_menu_enabled: self.default_context_menu_enabled,
+            reveal_in_file_manager_enabled: self.reveal_in_file_manager_enabled,
+            goto_line_state: self.goto_line_state.clone(),
+            command_palette_state: self.command_palette_state.clone(),
+            custom_command_palette_entries: self.custom_command_palette_entries.clone(),
+            default_command_palette_enabled: self.default_command_palette_enabled,
+            command_palette_enabled: self.command_palette_enabled,
+            vim_enabled: self.vim_enabled,
+            vim_state: vim::VimState::default(),
+            translations: self.translations,
+            search_replace_enabled: self.search_replace_enabled,
+            line_numbers_enabled: self.line_numbers_enabled,
+            show_whitespace: self.show_whitespace,
+            show_indent_guides: self.show_indent_guides,
+            show_color_previews: self.show_color_previews,
+            bracket_match_highlight_enabled: self.bracket_match_highlight_enabled,
+            bracket_pair_colorization_enabled: self.bracket_pair_colorization_enabled,
+            sticky_scroll_enabled: self.sticky_scroll_enabled,
+            lsp_enabled: self.lsp_enabled,
+            lsp_client: None,
+            lsp_document: None,
+            lsp_pending_changes: Vec::new(),
+            lsp_shadow_text: String::new(),
+            lsp_shadow_is_current: true,
+            lsp_synced_line_count: 1,
+            lsp_synced_last_line_len: 0,
+            lsp_edit_snapshot: None,
+            lsp_auto_flush: self.lsp_auto_flush,
+            has_canvas_focus: self.has_canvas_focus,
+            focus_locked: false,
+            show_cursor: self.show_cursor,
+            modifiers: Cell::new(self.modifiers.get()),
+            last_click: Cell::new(self.last_click.get()),
+            font: self.font,
+            ime_preedit: None,
+            font_size: self.font_size,
+            full_char_width: self.full_char_width,
+            line_height: self.line_height,
+            char_width: self.char_width,
+            last_first_visible_line: self.last_first_visible_line,
+            cache_window_start_line: self.cache_window_start_line,
+            cache_window_end_line: self.cache_window_end_line,
+            buffer_revision: self.buffer_revision,
+            visual_lines_cache: RefCell::new(None),
+            resolved_syntax: RefCell::new(None),
+            highlight_cache: RefCell::new(None),
+            highlight_lines_remaining: Cell::new(usize::MAX),
+            bracket_depth_cache: RefCell::new(BracketDepthCache::new()),
+            pre_edit_line: 0,
+            pre_edit_last_line: 0,
+        };
+        editor.recalculate_char_dimensions(false);
+        editor
+    }
+}
+
+impl Clone for CodeEditor {
+    fn clone(&self) -> Self {
+        self.clone_state()
+    }
+}
+
+impl CodeEditor {
     /// Returns the current text content as a string.
     ///
     /// The buffer's original line endings and trailing newline are preserved,
@@ -868,5 +970,22 @@ mod tests {
         assert!(editor.is_dialog_open());
         let _ = editor.close_command_palette();
         assert!(!editor.is_dialog_open());
+    }
+}
+
+#[cfg(test)]
+mod clone_tests {
+    use super::CodeEditor;
+
+    #[test]
+    fn clone_keeps_the_document_and_settings() {
+        let mut editor = CodeEditor::new("export fn main() void {}\n", "zig");
+        editor.set_line_numbers_enabled(false);
+
+        let cloned = editor.clone();
+        assert_eq!(cloned.content(), editor.content());
+        assert_eq!(cloned.syntax(), editor.syntax());
+        assert!(!cloned.line_numbers_enabled());
+        assert!(!cloned.is_modified());
     }
 }
