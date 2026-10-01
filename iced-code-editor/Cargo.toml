@@ -39,6 +39,12 @@ serde_json = { version = "1", optional = true }
 [dev-dependencies]
 criterion = "0.5"
 
+# iced pulls iced_winit -> winit, and on Android winit needs one activity
+# backend; hosts normally enable it themselves, but the library must build
+# standalone too.
+[target.'cfg(target_os = "android")'.dependencies]
+winit = { version = "0.30", features = ["android-game-activity"] }
+
 [[bench]]
 name = "editor_benchmarks"
 harness = false
