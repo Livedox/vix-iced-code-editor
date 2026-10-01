@@ -19,7 +19,10 @@ two-face = ["dep:two-face"]
 bench = []
 
 [dependencies]
-iced.workspace = true
+# Trimmed from the workspace `iced` dependency: the library only needs the
+# canvas widget, and keeping iced's default features out of the graph avoids
+# pulling extra renderers (e.g. tiny-skia) into host applications.
+iced = { version = "0.14", default-features = false, features = ["advanced", "canvas"] }
 syntect = { version = "5.3", default-features = false, features = ["default-fancy"] }
 # `default-features = false` + `syntect-fancy` is required: two-face defaults to
 # `syntect-onig`, which would pull the C `onig` backend into a workspace that
